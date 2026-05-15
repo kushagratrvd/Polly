@@ -415,7 +415,7 @@ export function DashboardPage() {
                             asChild
                             className="bg-white text-black hover:bg-white/90"
                           >
-                            <Link to={`/poll/${pollId}`}>Details</Link>
+                            <Link to={`/poll/${pollId}`}>View poll</Link>
                           </Button>
                         </div>
                       </li>
@@ -487,10 +487,7 @@ export function DashboardPage() {
                               : 0;
 
                             return (
-                              <div
-                                key={optionId}
-                                className="block rounded-md border border-white/10 bg-black/25 p-3"
-                              >
+                              <div key={optionId} className="rounded-md border border-white/10 bg-black/25 p-3">
                                 <div className="flex items-center gap-3">
                                   <span className="flex-1 text-sm">{option.text}</span>
                                   <span className="text-xs text-white/55">
