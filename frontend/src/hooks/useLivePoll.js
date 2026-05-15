@@ -4,6 +4,7 @@ import { io } from "socket.io-client";
 const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
   (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/api\/?$/, "");
+const EMPTY_SETTERS = [];
 
 const getPollId = (poll) => poll?._id || poll?.id;
 const sameId = (left, right) => String(left) === String(right);
@@ -33,7 +34,7 @@ function updateOptionCount(poll, questionId, optionId, newCount) {
   };
 }
 
-export function useLivePoll({ pollId, setSelectedPoll, pollListSetters = [] }) {
+export function useLivePoll({ pollId, setSelectedPoll, pollListSetters = EMPTY_SETTERS }) {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
