@@ -91,6 +91,10 @@ const publishPoll = async (pollId, userId) => {
     pollId,
     publishedAt: poll.publishedAt,
   });
+  io.to("analytics").emit("poll-published", {
+    pollId,
+    publishedAt: poll.publishedAt,
+  });
 
   return getPollById(pollId);
 }
@@ -129,7 +133,9 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       throw ApiError.unauthorized("Sign in to vote on this poll");
     }
 
-    const voterId = poll.responseMode === "authenticated" ? userId : undefined;
+    // If the requester is authenticated, associate the vote with their user id.
+    // This prevents logged-in users from voting multiple times even on anonymous polls.
+    const voterId = userId ? userId : undefined;
 
     if (voterId) {
       const existingVote = await Vote.findOne({ poll: pollId, user: voterId }).lean();
@@ -199,6 +205,11 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       pollId: pollId,
       newTotalVotes: updatedPoll.voteCount
     });
+    // also notify analytics room
+    io.to("analytics").emit("poll-total-updated", {
+      pollId: pollId,
+      newTotalVotes: updatedPoll.voteCount
+    });
 
     for (const selection of selected) {
       const updatedQuestion = await Question.findOneAndUpdate(
@@ -212,6 +223,12 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       );
 
       io.to(pollId).emit("option-count-updated", {
+        questionId: selection.question,
+        optionId: selection.option,
+        newCount: updatedOption.selectedCount
+      });
+      io.to("analytics").emit("option-count-updated", {
+        pollId: pollId,
         questionId: selection.question,
         optionId: selection.option,
         newCount: updatedOption.selectedCount
@@ -242,6 +259,45 @@ const submitPoll = async ({ pollId, selected, userId }) => {
   }
 }
 
+const getCreatorAnalytics = async (userId) => {
+  if (!isValidObjectId(userId)) return {
+    pollsCreated: 0,
+    totalVotes: 0,
+    topPolls: [],
+    recentPolls: []
+  };
+
+  const pollsCreated = await Poll.countDocuments({ author: userId });
+
+  const objectUserId = new mongoose.Types.ObjectId(userId);
+
+  const totalAgg = await Poll.aggregate([
+    { $match: { author: objectUserId } },
+    { $group: { _id: null, totalVotes: { $sum: { $ifNull: ["$voteCount", 0] } } } },
+  ]);
+
+  const totalVotes = totalAgg.length ? totalAgg[0].totalVotes : 0;
+
+  const topPolls = await Poll.find({ author: objectUserId })
+    .sort({ voteCount: -1 })
+    .limit(5)
+    .select("title voteCount")
+    .lean();
+
+  const recentPolls = await Poll.find({ author: objectUserId })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .select("title createdAt")
+    .lean();
+
+  return {
+    pollsCreated,
+    totalVotes,
+    topPolls,
+    recentPolls,
+  };
+};
+
 export {
   getMyPolls,
   getMyVotedPolls,
@@ -249,5 +305,6 @@ export {
   getPolls,
   publishPoll,
   createPoll,
-  submitPoll
+  submitPoll,
+  getCreatorAnalytics
 };

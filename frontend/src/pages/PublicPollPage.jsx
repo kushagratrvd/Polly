@@ -57,6 +57,7 @@ export function PublicPollPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [hasVoted, setHasVoted] = useState(false);
 
   const token = typeof window !== "undefined"
     ? localStorage.getItem("accessToken")
@@ -70,6 +71,24 @@ export function PublicPollPage() {
   const isExpired = Boolean(poll?.expiresAt && new Date(poll.expiresAt) <= new Date());
   const requiresLogin = poll?.responseMode === "authenticated" && !token;
   const canVote = poll && !poll.isPublished && !isExpired && !requiresLogin;
+
+  useEffect(() => {
+    let mounted = true;
+    if (!token || !pollId) return;
+
+    (async () => {
+      try {
+        const voted = await apiRequest("/api/poll/my-votes", { auth: true });
+        if (!mounted) return;
+        const found = Array.isArray(voted) && voted.some((p) => (p._id || p.id) === pollId);
+        setHasVoted(Boolean(found));
+      } catch (err) {
+        // ignore errors here; we'll rely on server-side validation on submit
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [token, pollId]);
 
   const fetchPoll = useCallback(async ({ clearMessages = true } = {}) => {
     setLoading(true);
@@ -107,6 +126,11 @@ export function PublicPollPage() {
       return;
     }
 
+    if (hasVoted) {
+      setError("You have already voted on this poll.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -128,6 +152,7 @@ export function PublicPollPage() {
       });
 
       await fetchPoll({ clearMessages: false });
+        setHasVoted(true);
       setNotice("Vote submitted.");
     } catch (err) {
       setError(err.message || "Failed to submit vote");
@@ -194,7 +219,7 @@ export function PublicPollPage() {
             ) : requiresLogin ? (
               <div className="rounded-md border border-white/10 bg-white/5 p-5">
                 <p className="text-sm text-white/70">This poll requires an authenticated response.</p>
-                <Button asChild className="mt-4 bg-white text-black hover:bg-white/90">
+                <Button asChild className="mt-4 bg-white text-black hover:bg-white/90 hover:text-white">
                   <Link to="/login">Sign in to vote</Link>
                 </Button>
               </div>

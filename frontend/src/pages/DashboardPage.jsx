@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useLivePoll } from "@/hooks/useLivePoll";
 import { apiRequest } from "@/lib/api";
@@ -36,10 +37,8 @@ export function DashboardPage() {
   const [myPolls, setMyPolls] = useState([]);
   const [votedPolls, setVotedPolls] = useState([]);
   const [selectedPoll, setSelectedPoll] = useState(null);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [submittingVote, setSubmittingVote] = useState(false);
   const [creatingPoll, setCreatingPoll] = useState(false);
   const [publishingPoll, setPublishingPoll] = useState(false);
   const [error, setError] = useState("");
@@ -112,7 +111,6 @@ export function DashboardPage() {
       setError("");
       setNotice("");
     }
-    setSelectedAnswers({});
 
     try {
       const poll = await apiRequest(`/api/poll/${pollId}`);
@@ -134,51 +132,6 @@ export function DashboardPage() {
     }
   }, [fetchDashboardData, openPoll]);
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  async function submitVote() {
-    if (!selectedPoll) return;
-
-    const questions = selectedPoll.questions || [];
-    const missingRequired = questions.some(
-      (question) => !question.optional && !selectedAnswers[getPollId(question)],
-    );
-
-    if (missingRequired) {
-      setError("Please answer every required question before submitting.");
-      return;
-    }
-
-    const selected = Object.entries(selectedAnswers).map(([question, option]) => ({
-      question,
-      option,
-    }));
-
-    setSubmittingVote(true);
-    setError("");
-    setNotice("");
-
-    try {
-      await apiRequest("/api/poll/submit", {
-        method: "POST",
-        auth: Boolean(token),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pollId: getPollId(selectedPoll),
-          selected,
-        }),
-      });
-
-      await openPoll(getPollId(selectedPoll), { clearMessages: false });
-      await fetchDashboardData({ clearMessages: false });
-      setNotice("Vote submitted.");
-    } catch (err) {
-      setError(err.message || "Failed to submit vote");
-    } finally {
-      setSubmittingVote(false);
-    }
-  }
 
   async function publishPoll() {
     if (!selectedPollId) return;
@@ -362,25 +315,26 @@ export function DashboardPage() {
             <div className="text-sm uppercase tracking-wider text-teal-300">Polly dashboard</div>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">Poll command center</h1>
             <p className="mt-3 max-w-2xl text-sm text-white/65">
-              Create polls, review your activity, open live poll details, and submit votes from one place.
+              Create polls, review your activity, open live poll details.
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={fetchDashboardData}
-            disabled={loading}
-            className="h-10 border border-white/10 bg-white text-black hover:bg-white/90"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-            Refresh
-          </Button>
-        </header>
-
-        {error ? (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {error}
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={fetchDashboardData}
+              disabled={loading}
+              className="h-10 border border-white/10 bg-white text-black hover:bg-white/90"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              Refresh
+            </Button>
+            {token ? (
+              <Button asChild variant="outline" className="h-10 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white">
+                <Link to="/analytics/creator">Analytics</Link>
+              </Button>
+            ) : null}
           </div>
-        ) : null}
+        </header>
 
         {notice ? (
           <div className="rounded-md border border-teal-400/30 bg-teal-400/10 px-4 py-3 text-sm text-teal-100">
@@ -410,7 +364,7 @@ export function DashboardPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setActiveView(view.id)}
-                  className={`border-white/15 text-white hover:bg-white/10 ${
+                  className={`border-white/15 text-white hover:bg-white/10 hover:text-white ${
                     activeView === view.id ? "bg-white/15" : "bg-black/20"
                   }`}
                 >
@@ -453,19 +407,17 @@ export function DashboardPage() {
                             type="button"
                             variant="outline"
                             onClick={() => copyPollLink(pollId)}
-                            className="border-white/15 bg-black/20 text-white hover:bg-white/10"
+                            className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                             title="Copy poll link"
                           >
                             <Copy />
                             Copy
                           </Button>
-                          <Button
-                            type="button"
-                            onClick={() => openPoll(pollId)}
-                            className="bg-white text-black hover:bg-white/90"
-                          >
-                            <BarChart3 />
-                            Open
+                          <Button asChild className="bg-white text-black hover:bg-white/90 hover:text-white">
+                            <Link to={`/poll/${pollId}`}>
+                              <BarChart3 />
+                              Open
+                            </Link>
                           </Button>
                         </div>
                       </li>
@@ -502,14 +454,13 @@ export function DashboardPage() {
                   </div>
 
                   {(selectedPoll.questions || []).map((question, questionIndex) => {
-                    const questionId = getPollId(question);
                     const totalSelections = (question.options || []).reduce(
                       (sum, option) => sum + (option.selectedCount || 0),
                       0,
                     );
 
                     return (
-                      <div key={questionId} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <div key={getPollId(question)} className="rounded-lg border border-white/10 bg-white/5 p-4">
                         <div className="flex flex-col gap-1">
                           <h4 className="font-medium">
                             {questionIndex + 1}. {question.text}
@@ -521,34 +472,16 @@ export function DashboardPage() {
 
                         <div className="mt-4 space-y-3">
                           {(question.options || []).map((option) => {
-                            const optionId = getPollId(option);
                             const count = option.selectedCount || 0;
                             const percentage = totalSelections
                               ? Math.round((count / totalSelections) * 100)
                               : 0;
 
                             return (
-                              <label
-                                key={optionId}
-                                className="block rounded-md border border-white/10 bg-black/25 p-3"
-                              >
+                              <div key={getPollId(option)} className="block rounded-md border border-white/10 bg-black/25 p-3">
                                 <div className="flex items-center gap-3">
-                                  <input
-                                    type="radio"
-                                    name={questionId}
-                                    checked={selectedAnswers[questionId] === optionId}
-                                    onChange={() =>
-                                      setSelectedAnswers((current) => ({
-                                        ...current,
-                                        [questionId]: optionId,
-                                      }))
-                                    }
-                                    className="h-4 w-4 accent-teal-300"
-                                  />
                                   <span className="flex-1 text-sm">{option.text}</span>
-                                  <span className="text-xs text-white/55">
-                                    {count} votes
-                                  </span>
+                                  <span className="text-xs text-white/55">{count} votes</span>
                                 </div>
                                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                                   <div
@@ -556,7 +489,7 @@ export function DashboardPage() {
                                     style={{ width: `${percentage}%` }}
                                   />
                                 </div>
-                              </label>
+                              </div>
                             );
                           })}
                         </div>
@@ -565,18 +498,6 @@ export function DashboardPage() {
                   })}
 
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    {!selectedPoll.isPublished ? (
-                      <Button
-                        type="button"
-                        onClick={submitVote}
-                        disabled={submittingVote || !(selectedPoll.questions || []).length}
-                        className="h-10 bg-teal-300 text-black hover:bg-teal-200"
-                      >
-                        {submittingVote ? <Loader2 className="animate-spin" /> : <Check />}
-                        Submit vote
-                      </Button>
-                    ) : null}
-
                     {selectedPollIsMine && !selectedPoll.isPublished ? (
                       <Button
                         type="button"
@@ -588,6 +509,10 @@ export function DashboardPage() {
                         Publish results
                       </Button>
                     ) : null}
+
+                    <Button asChild variant="outline" className="h-10 border-white/20 bg-black/20 text-white hover:bg-white/10">
+                      <Link to={`/poll/${getPollId(selectedPoll)}`}>Open poll page to vote</Link>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -675,7 +600,7 @@ export function DashboardPage() {
                         size="icon"
                         onClick={() => removeQuestion(questionIndex)}
                         disabled={newPoll.questions.length === 1}
-                        className="border-white/15 bg-black/20 text-white hover:bg-white/10"
+                        className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                         title="Remove question"
                       >
                         <Trash2 />
@@ -720,7 +645,7 @@ export function DashboardPage() {
                             size="icon"
                             onClick={() => removeOption(questionIndex, optionIndex)}
                             disabled={question.options.length <= 2}
-                            className="border-white/15 bg-black/20 text-white hover:bg-white/10"
+                            className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                             title="Remove option"
                           >
                             <Trash2 />
@@ -733,7 +658,7 @@ export function DashboardPage() {
                       type="button"
                       variant="outline"
                       onClick={() => addOption(questionIndex)}
-                      className="mt-3 border-white/15 bg-black/20 text-white hover:bg-white/10"
+                      className="mt-3 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                     >
                       <Plus />
                       Add option
@@ -747,7 +672,7 @@ export function DashboardPage() {
                   type="button"
                   variant="outline"
                   onClick={addQuestion}
-                  className="h-10 border-white/15 bg-black/20 text-white hover:bg-white/10"
+                  className="h-10 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                 >
                   <Plus />
                   Add question

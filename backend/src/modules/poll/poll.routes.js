@@ -8,6 +8,7 @@ import SubmitPollDto from "./dto/submit-poll.dto.js";
 const router = Router();
 
 router.get("/all", controller.getPolls);
+router.get("/analytics/creator", authenticate, controller.getCreatorAnalytics);
 router.get("/my-polls", authenticate, controller.getMyPolls);
 router.get("/my-votes", authenticate, controller.getMyVotedPolls);
 

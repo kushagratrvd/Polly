@@ -14,4 +14,14 @@ export const registerPollHandlers = (io, socket) => {
       pollId,
     });
   })
+  
+  socket.on("join-analytics-room", () => {
+    socket.join("analytics");
+    console.log("[socket] joined analytics room", { socketId: socket.id });
+  });
+
+  socket.on("leave-analytics-room", () => {
+    socket.leave("analytics");
+    console.log("[socket] left analytics room", { socketId: socket.id });
+  });
 }

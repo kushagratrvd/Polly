@@ -6,9 +6,14 @@ import authRoute from "./modules/auth/auth.routes.js";
 import pollRoute from "./modules/poll/poll.routes.js";
 
 const app = express();
+let clientOrigin = process.env.CLIENT_URL || "http://localhost:5173";
+// allow comma-separated list in CLIENT_URL env
+if (typeof clientOrigin === "string" && clientOrigin.includes(",")) {
+  clientOrigin = clientOrigin.split(",").map((s) => s.trim()).filter(Boolean);
+}
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: Array.isArray(clientOrigin) ? clientOrigin : [clientOrigin],
     credentials: true,
   }),
 );

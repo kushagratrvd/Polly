@@ -39,6 +39,11 @@ const publishPoll = async (req, res) => {
   ApiResponse.ok(res, "Poll results published", poll);
 }
 
+const getCreatorAnalytics = async (req, res) => {
+  const analytics = await pollService.getCreatorAnalytics(req.user.id);
+  ApiResponse.ok(res, "Creator analytics fetched", analytics);
+}
+
 const submitPoll = async (req, res) => {
   const userId = req.user ? req.user.id : undefined;
   
@@ -62,5 +67,6 @@ export {
   getPolls,
   publishPoll,
   createPoll,
-  submitPoll
+  submitPoll,
+  getCreatorAnalytics
 };
