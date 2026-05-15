@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  BarChart3,
   Check,
   Copy,
   Loader2,
@@ -36,10 +36,8 @@ export function DashboardPage() {
   const [myPolls, setMyPolls] = useState([]);
   const [votedPolls, setVotedPolls] = useState([]);
   const [selectedPoll, setSelectedPoll] = useState(null);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [submittingVote, setSubmittingVote] = useState(false);
   const [creatingPoll, setCreatingPoll] = useState(false);
   const [publishingPoll, setPublishingPoll] = useState(false);
   const [error, setError] = useState("");
@@ -112,7 +110,6 @@ export function DashboardPage() {
       setError("");
       setNotice("");
     }
-    setSelectedAnswers({});
 
     try {
       const poll = await apiRequest(`/api/poll/${pollId}`);
@@ -134,51 +131,6 @@ export function DashboardPage() {
     }
   }, [fetchDashboardData, openPoll]);
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  async function submitVote() {
-    if (!selectedPoll) return;
-
-    const questions = selectedPoll.questions || [];
-    const missingRequired = questions.some(
-      (question) => !question.optional && !selectedAnswers[getPollId(question)],
-    );
-
-    if (missingRequired) {
-      setError("Please answer every required question before submitting.");
-      return;
-    }
-
-    const selected = Object.entries(selectedAnswers).map(([question, option]) => ({
-      question,
-      option,
-    }));
-
-    setSubmittingVote(true);
-    setError("");
-    setNotice("");
-
-    try {
-      await apiRequest("/api/poll/submit", {
-        method: "POST",
-        auth: Boolean(token),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pollId: getPollId(selectedPoll),
-          selected,
-        }),
-      });
-
-      await openPoll(getPollId(selectedPoll), { clearMessages: false });
-      await fetchDashboardData({ clearMessages: false });
-      setNotice("Vote submitted.");
-    } catch (err) {
-      setError(err.message || "Failed to submit vote");
-    } finally {
-      setSubmittingVote(false);
-    }
-  }
 
   async function publishPoll() {
     if (!selectedPollId) return;
@@ -460,12 +412,10 @@ export function DashboardPage() {
                             Copy
                           </Button>
                           <Button
-                            type="button"
-                            onClick={() => openPoll(pollId)}
+                            asChild
                             className="bg-white text-black hover:bg-white/90"
                           >
-                            <BarChart3 />
-                            Open
+                            <Link to={`/poll/${pollId}`}>Details</Link>
                           </Button>
                         </div>
                       </li>
@@ -499,6 +449,15 @@ export function DashboardPage() {
                       <span>{selectedPoll.responseMode || "anonymous"} responses</span>
                       {selectedPoll.isPublished ? <span>Published</span> : null}
                     </p>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="mt-4 h-10 border-white/20 bg-black/20 text-white hover:bg-white/10"
+                    >
+                      <Link to={`/poll/${selectedPollId}`}>
+                        Open poll page to vote or view details
+                      </Link>
+                    </Button>
                   </div>
 
                   {(selectedPoll.questions || []).map((question, questionIndex) => {
@@ -528,23 +487,11 @@ export function DashboardPage() {
                               : 0;
 
                             return (
-                              <label
+                              <div
                                 key={optionId}
                                 className="block rounded-md border border-white/10 bg-black/25 p-3"
                               >
                                 <div className="flex items-center gap-3">
-                                  <input
-                                    type="radio"
-                                    name={questionId}
-                                    checked={selectedAnswers[questionId] === optionId}
-                                    onChange={() =>
-                                      setSelectedAnswers((current) => ({
-                                        ...current,
-                                        [questionId]: optionId,
-                                      }))
-                                    }
-                                    className="h-4 w-4 accent-teal-300"
-                                  />
                                   <span className="flex-1 text-sm">{option.text}</span>
                                   <span className="text-xs text-white/55">
                                     {count} votes
@@ -556,7 +503,7 @@ export function DashboardPage() {
                                     style={{ width: `${percentage}%` }}
                                   />
                                 </div>
-                              </label>
+                              </div>
                             );
                           })}
                         </div>
@@ -565,18 +512,6 @@ export function DashboardPage() {
                   })}
 
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    {!selectedPoll.isPublished ? (
-                      <Button
-                        type="button"
-                        onClick={submitVote}
-                        disabled={submittingVote || !(selectedPoll.questions || []).length}
-                        className="h-10 bg-teal-300 text-black hover:bg-teal-200"
-                      >
-                        {submittingVote ? <Loader2 className="animate-spin" /> : <Check />}
-                        Submit vote
-                      </Button>
-                    ) : null}
-
                     {selectedPollIsMine && !selectedPoll.isPublished ? (
                       <Button
                         type="button"
