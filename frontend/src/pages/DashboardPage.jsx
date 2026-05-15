@@ -415,7 +415,7 @@ export function DashboardPage() {
                             asChild
                             className="bg-white text-black hover:bg-white/90"
                           >
-                            <Link to={`/poll/${pollId}`}>View poll</Link>
+                            <Link to={`/poll/${pollId}`}>View details</Link>
                           </Button>
                         </div>
                       </li>
