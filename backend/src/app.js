@@ -24,6 +24,16 @@ app.use(cookieParser());
 app.use("/api/auth", authRoute);
 app.use("/api/poll", pollRoute);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
+app.get("/", (req, res) => {
+  const frontend = Array.isArray(clientOrigin) ? clientOrigin[0] : clientOrigin;
+  if (frontend) return res.redirect(frontend);
+  return res.status(200).json({ success: true, message: "API running" });
+});
+
 // Catch-all for undefined routes
 app.all("{*path}", (req, res) => {
   throw ApiError.notFound(`Route ${req.originalUrl} not found`);

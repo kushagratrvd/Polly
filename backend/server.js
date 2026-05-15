@@ -29,11 +29,29 @@ io.on("connection", (socket) => {
 })
 
 const start = async () => {
-    // connect to database
     await connectDB()
+
     server.listen(PORT, () => {
         console.log(`Server is running at ${PORT} in ${process.env.NODE_ENV} mode`)
     })
+
+    const PING_URL = process.env.PING_URL || null;
+
+    if (PING_URL) {
+        const pingServer = async () => {
+            try {
+                const res = await fetch(PING_URL);
+                console.log('[ping] pinged', PING_URL, 'status', res.status);
+            } catch (err) {
+                console.warn('[ping] failed to ping', PING_URL, err.message || err);
+            }
+        };
+
+        await pingServer(); // immediate ping
+
+        const intervalMs = 14 * 60 * 1000;
+        setInterval(pingServer, intervalMs);
+    }
 }
 
 start().catch((err) => {
