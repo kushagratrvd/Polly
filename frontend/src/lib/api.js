@@ -36,17 +36,17 @@ export async function readApiResponse(response) {
 
 const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
 
-function getAccessToken() {
+export function getAccessToken() {
   return localStorage.getItem("accessToken");
 }
 
-function setAccessToken(token) {
+export function setAccessToken(token) {
   if (token) {
     localStorage.setItem("accessToken", token);
   }
 }
 
-function clearAuthTokens() {
+export function clearAuthTokens() {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
 }
@@ -100,4 +100,21 @@ export async function apiRequest(path, options = {}) {
   }
 
   return payload?.data || payload;
+}
+
+export async function logout() {
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    try {
+      await readApiResponse(response);
+    } catch {
+      // ignore body parse errors for logout
+    }
+  } finally {
+    clearAuthTokens();
+  }
 }

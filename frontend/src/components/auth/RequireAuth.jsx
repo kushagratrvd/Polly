@@ -1,9 +1,14 @@
-import React from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "@/components/auth/useAuth";
 
 export default function RequireAuth({ children }) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  if (!token) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   return children;

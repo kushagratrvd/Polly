@@ -9,6 +9,12 @@ const pollSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 150,
     },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User"

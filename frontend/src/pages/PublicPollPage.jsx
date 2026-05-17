@@ -5,6 +5,7 @@ import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
 import { useLivePoll } from "@/hooks/useLivePoll";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
 
 const getPollId = (poll) => poll?._id || poll?.id;
 
@@ -59,9 +60,8 @@ export function PublicPollPage() {
   const [notice, setNotice] = useState("");
   const [hasVoted, setHasVoted] = useState(false);
 
-  const token = typeof window !== "undefined"
-    ? localStorage.getItem("accessToken")
-    : "";
+  const { isAuthenticated } = useAuth();
+  const token = isAuthenticated;
   const pollId = getPollId(poll) || id;
   const { connected: liveConnected } = useLivePoll({
     pollId,
@@ -82,7 +82,7 @@ export function PublicPollPage() {
         if (!mounted) return;
         const found = Array.isArray(voted) && voted.some((p) => (p._id || p.id) === pollId);
         setHasVoted(Boolean(found));
-      } catch (err) {
+      } catch {
         // ignore errors here; we'll rely on server-side validation on submit
       }
     })();
@@ -196,6 +196,9 @@ export function PublicPollPage() {
                   {poll.isPublished ? "Published results" : "Public poll"}
                 </div>
                 <h1 className="mt-2 text-3xl font-semibold">{poll.title}</h1>
+                {poll.description ? (
+                  <p className="mt-2 text-sm text-white/60">{poll.description}</p>
+                ) : null}
                 <p className="mt-2 flex flex-wrap gap-3 text-sm text-white/55">
                   <span>{poll.voteCount ?? 0} responses</span>
                   <span>{poll.responseMode || "anonymous"} mode</span>

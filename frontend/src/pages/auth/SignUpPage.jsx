@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { PageShell } from "@/components/shared/PageShell";
-import { readApiResponse } from "@/lib/api";
+import { readApiResponse, setAccessToken } from "@/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
 // If you have a Nav/Footer, import them
 // import Footer from "@/components/shared/Footer"; 
 
@@ -30,6 +31,7 @@ const formSchema = z.object({
 export function SignUpPage() {
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setSession } = useAuth();
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,10 +65,8 @@ export function SignUpPage() {
       }
 
       if (payload?.data?.accessToken) {
-        localStorage.setItem("accessToken", payload.data.accessToken);
-      }
-      if (payload?.data?.refreshToken) {
-        localStorage.setItem("refreshToken", payload.data.refreshToken);
+        setAccessToken(payload.data.accessToken);
+        await setSession(payload.data.accessToken);
       }
 
       navigate("/dashboard");

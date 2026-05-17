@@ -124,5 +124,4 @@ export {
   FormControl,
   FormDescription,
   FormMessage,
-  useFormField,
 };

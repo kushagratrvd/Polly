@@ -14,6 +14,15 @@ class CreatePollDto extends BaseDto {
         "string.max": "Poll title cannot exceed 150 characters",
       }),
 
+    description: Joi.string()
+      .allow("")
+      .trim()
+      .max(500)
+      .default("")
+      .messages({
+        "string.max": "Poll description cannot exceed 500 characters",
+      }),
+
     responseMode: Joi.string()
       .valid("anonymous", "authenticated")
       .default("anonymous")

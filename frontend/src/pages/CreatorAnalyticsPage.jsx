@@ -4,7 +4,7 @@ import { useLivePoll } from "@/hooks/useLivePoll";
 import { PageShell } from "@/components/shared/PageShell";
 import { apiRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Eye, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function CreatorAnalyticsPage() {
@@ -14,16 +14,20 @@ export default function CreatorAnalyticsPage() {
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         const payload = await apiRequest("/api/poll/analytics/creator", { auth: true });
-        if (!mounted) return;
-        setData(payload);
+        if (mounted) {
+          setData(payload);
+        }
       } catch (err) {
-        if (!mounted) return;
-        setError(err.message || "Failed to load analytics");
-      } finally {
-        if (!mounted) return;
+        if (mounted) {
+          setError(err.message || "Failed to load analytics");
+        }
+      }
+
+      if (mounted) {
         setLoading(false);
       }
     })();
@@ -105,7 +109,7 @@ export default function CreatorAnalyticsPage() {
                             console.warn("failed to load poll for watch", err.message);
                           }
                         }}>
-                          Watch
+                          <Eye /> Watch
                         </Button>
                       </div>
                     </li>
@@ -133,7 +137,7 @@ export default function CreatorAnalyticsPage() {
                             console.warn("failed to load poll for watch", err.message);
                           }
                         }}>
-                          Watch
+                          <Eye /> Watch
                         </Button>
                       </div>
                     </li>
@@ -150,6 +154,9 @@ export default function CreatorAnalyticsPage() {
                   <div>
                     <div className="text-sm text-white/60">Watching</div>
                     <div className="mt-1 text-lg font-semibold">{watchedPoll.title}</div>
+                    {watchedPoll.description ? (
+                      <div className="mt-1 text-sm text-white/55">{watchedPoll.description}</div>
+                    ) : null}
                     <div className="text-xs text-white/55">{watchedPoll.voteCount} votes</div>
                   </div>
                   <div className="flex items-center gap-2">

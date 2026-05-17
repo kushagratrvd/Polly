@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
@@ -13,6 +13,7 @@ import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
 import { useLivePoll } from "@/hooks/useLivePoll";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
 
 const getPollId = (poll) => poll?._id || poll?.id;
 
@@ -27,6 +28,9 @@ export function HomePage() {
     () => polls.reduce((sum, poll) => sum + (poll.voteCount || 0), 0),
     [polls],
   );
+
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
 
   const featuredPolls = useMemo(() => polls.slice(0, 6), [polls]);
   const selectedPollId = getPollId(selectedPoll);
@@ -72,12 +76,28 @@ export function HomePage() {
           <Link to="/dashboard" className="text-sm font-medium transition-colors hover:text-white">
             Dashboard
           </Link>
-          <Link to="/login" className="text-sm font-medium transition-colors hover:text-white">
-            Sign In
-          </Link>
-          <Button asChild variant="secondary" className="rounded-full border border-white/5 bg-white/10 text-white backdrop-blur-md hover:bg-white/20 hover:text-white">
-            <Link to="/signup">Sign Up</Link>
-          </Button>
+          {!isAuthenticated ? (
+            <>
+              <Link to="/login" className="text-sm font-medium transition-colors hover:text-white">
+                Sign In
+              </Link>
+              <Button asChild variant="secondary" className="rounded-full border border-white/5 bg-white/10 text-white backdrop-blur-md hover:bg-white/20 hover:text-white">
+                <Link to="/signup">Sign Up</Link>
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-sm font-medium text-black "
+              onClick={async () => {
+                await logout();
+                navigate("/");
+              }}
+            >
+              Logout
+            </Button>
+          )}
         </div>
       </nav>
 
@@ -171,8 +191,8 @@ export function HomePage() {
                 type="button"
                 onClick={fetchPublicPolls}
                 disabled={loadingPolls}
-                variant="outline"
-                className="h-full min-h-14 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white"
+                variant="glass"
+                className="h-full min-h-14 border-white/20"
               >
                 {loadingPolls ? <Loader2 className="animate-spin" /> : <RefreshCw />}
                 Refresh
@@ -229,11 +249,7 @@ export function HomePage() {
                                 {isSelected ? "Opened" : "Open"}
                               </Link>
                             </Button>
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
-                            >
+                            <Button asChild variant="glass">
                               <Link to={`/poll/${pollId}`}>Details</Link>
                             </Button>
                           </div>
@@ -256,7 +272,7 @@ export function HomePage() {
             <Button asChild size="lg" className="rounded-full bg-white text-black hover:bg-white/90 hover:text-white">
               <Link to="/signup">Start Creating</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-full border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white">
+            <Button asChild variant="glass" size="lg" className="rounded-full border-white/20">
               <Link to="/login">Sign In</Link>
             </Button>
           </div>

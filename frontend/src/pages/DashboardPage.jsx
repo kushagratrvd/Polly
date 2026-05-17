@@ -3,18 +3,36 @@ import {
   BarChart3,
   Check,
   Copy,
+  Eye,
   Loader2,
   Plus,
   RefreshCw,
   Send,
   Trash2,
+  CalendarIcon
 } from "lucide-react";
 import { PageShell } from "@/components/shared/PageShell";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useLivePoll } from "@/hooks/useLivePoll";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/components/auth/useAuth";
 
 const emptyQuestion = () => ({
   text: "",
@@ -24,12 +42,21 @@ const emptyQuestion = () => ({
 
 const emptyPoll = () => ({
   title: "",
+  description: "",
   responseMode: "anonymous",
   expiresAt: "",
   questions: [emptyQuestion()],
 });
 
 const getPollId = (poll) => poll?._id || poll?.id;
+
+const formatExpiryLabel = (value) =>
+  value
+    ? new Date(value).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "Pick expiry date";
 
 export function DashboardPage() {
   const [activeView, setActiveView] = useState("all");
@@ -46,9 +73,9 @@ export function DashboardPage() {
   const [createError, setCreateError] = useState("");
   const [newPoll, setNewPoll] = useState(emptyPoll);
 
-  const token = typeof window !== "undefined"
-    ? localStorage.getItem("accessToken")
-    : "";
+  const { isAuthenticated, logout } = useAuth();
+  const token = isAuthenticated;
+  const navigate = useNavigate();
   const selectedPollId = getPollId(selectedPoll);
   const pollListSetters = useMemo(
     () => [setPolls, setMyPolls, setVotedPolls],
@@ -175,6 +202,7 @@ export function DashboardPage() {
 
     const payload = {
       title: newPoll.title.trim(),
+      description: newPoll.description.trim(),
       responseMode: newPoll.responseMode,
       expiresAt: expiryDate ? expiryDate.toISOString() : null,
       questions: newPoll.questions.map((question) => ({
@@ -329,8 +357,21 @@ export function DashboardPage() {
               Refresh
             </Button>
             {token ? (
-              <Button asChild variant="outline" className="h-10 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white">
+              <Button asChild variant="glass" className="h-10">
                 <Link to="/analytics/creator">Analytics</Link>
+              </Button>
+            ) : null}
+            {token ? (
+              <Button
+                type="button"
+                variant="glass"
+                className="h-10"
+                onClick={async () => {
+                  await logout();
+                  navigate("/");
+                }}
+              >
+                Logout
               </Button>
             ) : null}
           </div>
@@ -339,6 +380,12 @@ export function DashboardPage() {
         {notice ? (
           <div className="rounded-md border border-teal-400/30 bg-teal-400/10 px-4 py-3 text-sm text-teal-100">
             {notice}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
           </div>
         ) : null}
 
@@ -362,11 +409,9 @@ export function DashboardPage() {
                 <Button
                   key={view.id}
                   type="button"
-                  variant="outline"
+                  variant="glass"
                   onClick={() => setActiveView(view.id)}
-                  className={`border-white/15 text-white hover:bg-white/10 hover:text-white ${
-                    activeView === view.id ? "bg-white/15" : "bg-black/20"
-                  }`}
+                  className={activeView === view.id ? "bg-white/15" : ""}
                 >
                   {view.label}
                 </Button>
@@ -405,9 +450,17 @@ export function DashboardPage() {
                         <div className="flex shrink-0 gap-2">
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="glass"
+                            onClick={() => openPoll(pollId)}
+                            title="Watch live updates"
+                          >
+                            <Eye />
+                            Watch
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="glass"
                             onClick={() => copyPollLink(pollId)}
-                            className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                             title="Copy poll link"
                           >
                             <Copy />
@@ -446,6 +499,9 @@ export function DashboardPage() {
                 <div className="space-y-5">
                   <div>
                     <h3 className="text-2xl font-semibold">{selectedPoll.title}</h3>
+                    {selectedPoll.description ? (
+                      <p className="mt-2 text-sm text-white/60">{selectedPoll.description}</p>
+                    ) : null}
                     <p className="mt-1 flex flex-wrap gap-3 text-sm text-white/55">
                       <span>{selectedPoll.voteCount ?? 0} total votes</span>
                       <span>{selectedPoll.responseMode || "anonymous"} responses</span>
@@ -510,7 +566,7 @@ export function DashboardPage() {
                       </Button>
                     ) : null}
 
-                    <Button asChild variant="outline" className="h-10 border-white/20 bg-black/20 text-white hover:bg-white/10">
+                    <Button asChild variant="glass" className="h-10 border-white/20">
                       <Link to={`/poll/${getPollId(selectedPoll)}`}>Open poll page to vote</Link>
                     </Button>
                   </div>
@@ -549,43 +605,137 @@ export function DashboardPage() {
                 />
               </div>
 
+              <div>
+                <label htmlFor="poll-description" className="text-sm text-white/75">
+                  Description (optional)
+                </label>
+                <textarea
+                  id="poll-description"
+                  value={newPoll.description}
+                  onChange={(event) =>
+                    setNewPoll((current) => ({ ...current, description: event.target.value }))
+                  }
+                  placeholder="Add a short description to provide context"
+                  className="mt-2 min-h-[96px] w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/35"
+                />
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label htmlFor="response-mode" className="text-sm text-white/75">
                     Response mode
                   </label>
-                  <select
-                    id="response-mode"
+                  <Select
                     value={newPoll.responseMode}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setNewPoll((current) => ({
                         ...current,
-                        responseMode: event.target.value,
+                        responseMode: value,
                       }))
                     }
-                    className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-black/25 px-3 text-sm text-white outline-none focus-visible:border-white/40"
                   >
-                    <option value="anonymous">Anonymous</option>
-                    <option value="authenticated">Authenticated</option>
-                  </select>
+                    <SelectTrigger className="mt-2 w-full border-white/10 bg-white/5 text-white">
+                      <SelectValue placeholder="Select response mode" />
+                    </SelectTrigger>
+
+                    <SelectContent className="bg-white/5 text-white border border-white/10">
+                      <SelectItem value="anonymous">
+                        Anonymous
+                      </SelectItem>
+
+                      <SelectItem value="authenticated">
+                        Authenticated
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label htmlFor="poll-expiry" className="text-sm text-white/75">
                     Expiry
                   </label>
-                  <Input
-                    id="poll-expiry"
-                    type="datetime-local"
-                    value={newPoll.expiresAt}
-                    onChange={(event) =>
-                      setNewPoll((current) => ({
-                        ...current,
-                        expiresAt: event.target.value,
-                      }))
-                    }
-                    className="mt-2 h-11 border-white/10 bg-white/5 text-white placeholder:text-white/35"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="glass"
+                        className="mt-2 w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+
+                        {formatExpiryLabel(newPoll.expiresAt)}
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-auto p-0 bg-white/5">
+                      <Calendar
+                        mode="single"
+                        className="bg-transparent"
+                        selected={newPoll.expiresAt ? new Date(newPoll.expiresAt) : undefined}
+                        onSelect={(date) => {
+                          if (!date) {
+                            setNewPoll((current) => ({ ...current, expiresAt: "" }));
+                            return;
+                          }
+
+                          const existing = newPoll.expiresAt
+                            ? new Date(newPoll.expiresAt)
+                            : new Date();
+
+                          date.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
+                          setNewPoll((current) => ({
+                            ...current,
+                            expiresAt: date.toISOString(),
+                          }));
+                        }}
+                        initialFocus
+                      />
+
+                      <div
+                        className={`flex items-center gap-2 border-t border-white/10 px-3 py-2 ${!newPoll.expiresAt ? "pointer-events-none opacity-40" : ""}`}
+                      >
+                        <span className="text-xs text-white/50">Time</span>
+                        <Select
+                          value={newPoll.expiresAt ? String(new Date(newPoll.expiresAt).getHours()).padStart(2, "0") : "23"}
+                          onValueChange={(h) => {
+                            const date = newPoll.expiresAt ? new Date(newPoll.expiresAt) : new Date();
+                            date.setHours(Number(h), date.getMinutes(), 0, 0);
+                            setNewPoll((c) => ({ ...c, expiresAt: date.toISOString() }));
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-20 border-white/10 bg-black/25 text-xs text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            
+                            {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((h) => (
+                              <SelectItem key={h} value={h}>{h}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <span className="text-white/40">:</span>
+
+                        <Select
+                          value={newPoll.expiresAt ? String(new Date(newPoll.expiresAt).getMinutes()).padStart(2, "0") : "59"}
+                          onValueChange={(m) => {
+                            const date = newPoll.expiresAt ? new Date(newPoll.expiresAt) : new Date();
+                            date.setMinutes(Number(m), 0, 0);
+                            setNewPoll((c) => ({ ...c, expiresAt: date.toISOString() }));
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-20 border-white/10 bg-black/25 text-xs text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((m) => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -596,11 +746,10 @@ export function DashboardPage() {
                       <span className="text-sm font-medium">Question {questionIndex + 1}</span>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="glass"
                         size="icon"
                         onClick={() => removeQuestion(questionIndex)}
                         disabled={newPoll.questions.length === 1}
-                        className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                         title="Remove question"
                       >
                         <Trash2 />
@@ -616,14 +765,14 @@ export function DashboardPage() {
                       className="h-10 border-white/10 bg-black/25 text-white placeholder:text-white/35"
                     />
 
-                    <label className="mt-3 flex items-center gap-2 text-sm text-white/65">
-                      <input
-                        type="checkbox"
+                    <label className="mt-3 flex items-center gap-2 leading-none text-sm text-white/65">
+                      <Checkbox
                         checked={question.optional}
-                        onChange={(event) =>
-                          updateQuestion(questionIndex, { optional: event.target.checked })
+                        onCheckedChange={(checked) =>
+                          updateQuestion(questionIndex, {
+                            optional: checked,
+                          })
                         }
-                        className="h-4 w-4 accent-teal-300"
                       />
                       Optional question
                     </label>
@@ -641,11 +790,10 @@ export function DashboardPage() {
                           />
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="glass"
                             size="icon"
                             onClick={() => removeOption(questionIndex, optionIndex)}
                             disabled={question.options.length <= 2}
-                            className="border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
                             title="Remove option"
                           >
                             <Trash2 />
@@ -656,9 +804,9 @@ export function DashboardPage() {
 
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="glass"
                       onClick={() => addOption(questionIndex)}
-                      className="mt-3 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
+                      className="mt-3"
                     >
                       <Plus />
                       Add option
@@ -670,9 +818,9 @@ export function DashboardPage() {
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="glass"
                   onClick={addQuestion}
-                  className="h-10 border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white"
+                  className="h-10"
                 >
                   <Plus />
                   Add question

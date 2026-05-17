@@ -46,9 +46,10 @@ const getMyVotedPolls = async (userId) => {
   return votedPolls;
 }
 
-const createPoll = async ({ title, author, questions, responseMode, expiresAt }) => {
+const createPoll = async ({ title, description, author, questions, responseMode, expiresAt }) => {
   const poll = await Poll.create({
     title,
+    description,
     author,
     responseMode,
     expiresAt,
