@@ -6,9 +6,33 @@ import mongoose from "mongoose";
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const toId = (value) => value?.toString();
 
-const getPolls = async () => {
-  const polls = await Poll.find().sort({ createdAt: -1 }).limit(50).lean();
-  return polls;
+const PAGE_SIZE = 10;
+
+const getPolls = async ({ page = 1, limit = PAGE_SIZE, search = "" } = {}) => {
+  const parsedPage  = Math.max(1, parseInt(page,  10) || 1);
+  const parsedLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || PAGE_SIZE));
+  const skip = (parsedPage - 1) * parsedLimit;
+
+  const filter = search
+    ? { title: { $regex: search.trim(), $options: "i" } }
+    : {};
+
+  const [polls, total] = await Promise.all([
+    Poll.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parsedLimit).lean(),
+    Poll.countDocuments(filter),
+  ]);
+
+  return {
+    polls,
+    pagination: {
+      total,
+      page:       parsedPage,
+      limit:      parsedLimit,
+      totalPages: Math.ceil(total / parsedLimit),
+      hasNext:    parsedPage < Math.ceil(total / parsedLimit),
+      hasPrev:    parsedPage > 1,
+    },
+  };
 };
 
 const getPollById = async (pollId) => {
@@ -257,9 +281,9 @@ const getCreatorAnalytics = async (userId) => {
     recentPolls: []
   };
 
-  const pollsCreated = await Poll.countDocuments({ author: userId });
-
   const objectUserId = new mongoose.Types.ObjectId(userId);
+
+  const pollsCreated = await Poll.countDocuments({ author: objectUserId });
 
   const totalAgg = await Poll.aggregate([
     { $match: { author: objectUserId } },
@@ -277,7 +301,7 @@ const getCreatorAnalytics = async (userId) => {
   const recentPolls = await Poll.find({ author: objectUserId })
     .sort({ createdAt: -1 })
     .limit(5)
-    .select("title createdAt")
+    .select("title voteCount createdAt")
     .lean();
 
   return {

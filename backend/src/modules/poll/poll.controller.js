@@ -2,8 +2,9 @@ import * as pollService from "./poll.service.js"
 import ApiResponse from "../../common/utils/api-response.js";
 
 const getPolls = async (req, res) => {
-  const polls = await pollService.getPolls(req);
-  ApiResponse.ok(res, "Polls fetched successfully", polls);
+  const { page, limit, search } = req.query;
+  const result = await pollService.getPolls({ page, limit, search });
+  ApiResponse.ok(res, "Polls fetched successfully", result);
 };
 
 const getPollById = async (req, res) => {
@@ -28,7 +29,7 @@ const createPoll = async (req, res) => {
   });
 
   ApiResponse.created(
-    res, 
+    res,
     "Poll created successfully",
     poll,
   );
@@ -46,8 +47,8 @@ const getCreatorAnalytics = async (req, res) => {
 
 const submitPoll = async (req, res) => {
   const userId = req.user ? req.user.id : undefined;
-  
-  if(userId) req.body.userId = userId;
+
+  if (userId) req.body.userId = userId;
 
   console.log("[poll] vote submission received", {
     pollId: req.body.pollId,
@@ -61,9 +62,9 @@ const submitPoll = async (req, res) => {
 }
 
 export {
-  getMyPolls, 
+  getMyPolls,
   getMyVotedPolls,
-  getPollById, 
+  getPollById,
   getPolls,
   publishPoll,
   createPoll,
