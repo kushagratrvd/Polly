@@ -99,7 +99,7 @@ export async function apiRequest(path, options = {}) {
     throw new Error(payload?.message || "Request failed");
   }
 
-  return payload?.data || payload;
+  return payload?.data ?? payload;
 }
 
 export async function logout() {

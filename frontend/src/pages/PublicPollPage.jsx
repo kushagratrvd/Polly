@@ -84,7 +84,7 @@ export function PublicPollPage() {
       try {
         const voted = await apiRequest("/api/poll/my-votes", { auth: true });
         if (!mounted) return;
-        const found = Array.isArray(voted) && voted.some((p) => (p._id || p.id) === pollId);
+        const found = Array.isArray(voted) && voted.some((p) => String(p._id ?? p.id) === String(pollId));
         setHasVoted(Boolean(found));
       } catch {
         // ignore errors here; we'll rely on server-side validation on submit

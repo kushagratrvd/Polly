@@ -22,7 +22,7 @@ router.post(
 router.post(
   "/submit",
   optionalAuthenticate,
-  validate(SubmitPollDto),
+  validate(SubmitPollDto.schema),
   controller.submitPoll,
 );
 
