@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Copy, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/shared/PageShell";
 import { Button } from "@/components/ui/button";
 import { useLivePoll } from "@/hooks/useLivePoll";
@@ -8,6 +8,9 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/components/auth/useAuth";
 
 const getPollId = (poll) => poll?._id || poll?.id;
+
+const formatExpiry = (value) =>
+  new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
 function PollResults({ poll }) {
   return (
@@ -34,7 +37,7 @@ function PollResults({ poll }) {
                   <div key={getPollId(option)} className="rounded-md border border-white/10 bg-black/25 p-3">
                     <div className="flex items-center justify-between gap-4 text-sm">
                       <span>{option.text}</span>
-                      <span className="text-white/60">{count} votes - {percentage}%</span>
+                      <span className="text-white/60">{count} votes — {percentage}%</span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-teal-300" style={{ width: `${percentage}%` }} />
@@ -59,6 +62,7 @@ export function PublicPollPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [hasVoted, setHasVoted] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { isAuthenticated } = useAuth();
   const token = isAuthenticated;
@@ -70,7 +74,7 @@ export function PublicPollPage() {
 
   const isExpired = Boolean(poll?.expiresAt && new Date(poll.expiresAt) <= new Date());
   const requiresLogin = poll?.responseMode === "authenticated" && !token;
-  const canVote = poll && !poll.isPublished && !isExpired && !requiresLogin;
+  const canVote = poll && !poll.isPublished && !isExpired && !requiresLogin && !hasVoted;
 
   useEffect(() => {
     let mounted = true;
@@ -113,6 +117,12 @@ export function PublicPollPage() {
   }, [fetchPoll]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  async function copyLink() {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   async function submitVote() {
     if (!poll) return;
 
@@ -152,7 +162,7 @@ export function PublicPollPage() {
       });
 
       await fetchPoll({ clearMessages: false });
-        setHasVoted(true);
+      setHasVoted(true);
       setNotice("Vote submitted.");
     } catch (err) {
       setError(err.message || "Failed to submit vote");
@@ -164,13 +174,28 @@ export function PublicPollPage() {
   return (
     <PageShell className="min-h-screen bg-black text-white" overlayOpacity={0.9} bgIndex={1}>
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
-        <Button asChild variant="outline" className="w-fit border-white/15 bg-black/20 text-white hover:bg-white/10">
-          <Link to="/">
-            <ArrowLeft />
-            Home
-          </Link>
-        </Button>
 
+        {/* ── Top nav ── */}
+        <div className="flex items-center justify-between">
+          <Button asChild variant="outline" className="w-fit border-white/15 bg-black/20 text-white hover:bg-white/10 hover:text-white">
+            <Link to="/">
+              <ArrowLeft />
+              Home
+            </Link>
+          </Button>
+
+          <Button
+            type="button"
+            variant="glass"
+            onClick={copyLink}
+            className="gap-2"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied!" : "Share"}
+          </Button>
+        </div>
+
+        {/* ── Messages ── */}
         {error ? (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
@@ -183,13 +208,20 @@ export function PublicPollPage() {
           </div>
         ) : null}
 
+        {/* ── Loading ── */}
         {loading ? (
           <div className="flex items-center gap-2 text-white/65">
             <Loader2 className="animate-spin" />
             Loading poll...
           </div>
-        ) : poll ? (
+        ) : !poll ? (
+          <div className="rounded-md border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/60">
+            Poll not found.
+          </div>
+        ) : (
           <section className="rounded-lg border border-white/10 bg-black/35 p-5">
+
+            {/* ── Poll header ── */}
             <div className="mb-6 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="text-xs uppercase tracking-wider text-teal-300">
@@ -202,14 +234,17 @@ export function PublicPollPage() {
                 <p className="mt-2 flex flex-wrap gap-3 text-sm text-white/55">
                   <span>{poll.voteCount ?? 0} responses</span>
                   <span>{poll.responseMode || "anonymous"} mode</span>
-                  {poll.expiresAt ? <span>Expires {new Date(poll.expiresAt).toLocaleString()}</span> : null}
+                  {poll.expiresAt ? (
+                    <span>Expires {formatExpiry(poll.expiresAt)}</span>
+                  ) : null}
                 </p>
               </div>
-              <span className={`text-xs ${liveConnected ? "text-teal-300" : "text-white/40"}`}>
+              <span className={`shrink-0 text-xs ${liveConnected ? "text-teal-300" : "text-white/40"}`}>
                 {liveConnected ? "Live" : "Connecting"}
               </span>
             </div>
 
+            {/* ── Poll body ── */}
             {poll.isPublished ? (
               <PollResults poll={poll} />
             ) : isExpired ? (
@@ -228,20 +263,49 @@ export function PublicPollPage() {
               </div>
             ) : (
               <div className="space-y-5">
+
+                {/* Already voted notice */}
+                {hasVoted ? (
+                  <div className="rounded-md border border-teal-400/30 bg-teal-400/10 px-4 py-3 text-sm text-teal-100">
+                    You've already voted on this poll. Results update live below.
+                  </div>
+                ) : null}
+
+                {/* Question count */}
+                {poll.questions?.length > 1 ? (
+                  <p className="text-xs text-white/40">
+                    {poll.questions.length} questions — answer all required ones before submitting.
+                  </p>
+                ) : null}
+
                 {(poll.questions || []).map((question, questionIndex) => (
                   <div key={getPollId(question)} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <div className="flex flex-col gap-1">
-                      <h2 className="font-medium">
-                        {questionIndex + 1}. {question.text}
-                      </h2>
-                      <span className="text-xs text-white/45">
-                        {question.optional ? "Optional" : "Required"}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1">
+                        <h2 className="font-medium">
+                          {questionIndex + 1}. {question.text}
+                        </h2>
+                        <span className="text-xs text-white/45">
+                          {question.optional ? "Optional" : "Required"}
+                        </span>
+                      </div>
+                      {poll.questions?.length > 1 ? (
+                        <span className="shrink-0 text-xs text-white/30">
+                          {questionIndex + 1}/{poll.questions.length}
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="mt-4 space-y-3">
                       {(question.options || []).map((option) => (
-                        <label key={getPollId(option)} className="flex items-center gap-3 rounded-md border border-white/10 bg-black/25 p-3">
+                        <label
+                          key={getPollId(option)}
+                          className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors ${
+                            selectedAnswers[getPollId(question)] === getPollId(option)
+                              ? "border-teal-400/40 bg-teal-400/10"
+                              : "border-white/10 bg-black/25 hover:bg-white/5"
+                          } ${hasVoted ? "pointer-events-none opacity-60" : ""}`}
+                        >
                           <input
                             type="radio"
                             name={getPollId(question)}
@@ -252,6 +316,7 @@ export function PublicPollPage() {
                                 [getPollId(question)]: getPollId(option),
                               }))
                             }
+                            disabled={hasVoted}
                             className="h-4 w-4 accent-teal-300"
                           />
                           <span className="text-sm">{option.text}</span>
@@ -261,19 +326,33 @@ export function PublicPollPage() {
                   </div>
                 ))}
 
-                <Button
-                  type="button"
-                  onClick={submitVote}
-                  disabled={submitting || !canVote}
-                  className="h-11 bg-teal-300 text-black hover:bg-teal-200"
-                >
-                  {submitting ? <Loader2 className="animate-spin" /> : <Check />}
-                  Submit response
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    onClick={submitVote}
+                    disabled={submitting || !canVote}
+                    className="h-11 bg-teal-300 text-black hover:bg-teal-200 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <Loader2 className="animate-spin" />
+                    ) : hasVoted ? (
+                      <Check />
+                    ) : (
+                      <Check />
+                    )}
+                    {submitting ? "Submitting..." : hasVoted ? "Already voted" : "Submit response"}
+                  </Button>
+
+                  {!hasVoted ? (
+                    <span className="text-xs text-white/35">
+                      {poll.voteCount ?? 0} responses so far
+                    </span>
+                  ) : null}
+                </div>
               </div>
             )}
           </section>
-        ) : null}
+        )}
       </main>
     </PageShell>
   );
