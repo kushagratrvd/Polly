@@ -6,8 +6,8 @@ import mongoose from "mongoose";
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const toId = (value) => value?.toString();
 
-const getPolls = async (req) => {
-  const polls = await Poll.find();
+const getPolls = async () => {
+  const polls = await Poll.find().sort({ createdAt: -1 }).limit(50).lean();
   return polls;
 };
 
@@ -17,18 +17,17 @@ const getPollById = async (pollId) => {
   }
 
   const poll = await Poll.findById(pollId).lean();
-  if(!poll) throw ApiError.notFound("Poll not found");
+  if (!poll) throw ApiError.notFound("Poll not found");
 
   const questions = await Question.find({ poll: pollId }).lean();
-
   poll.questions = questions;
 
   return poll;
 }
 
 const getMyPolls = async (userId) => {
-  const polls = await Poll.find({ author: userId });
-  if(!polls) throw ApiError.notFound("Polls not found");
+  const polls = await Poll.find({ author: userId }).sort({ createdAt: -1 }).limit(50).lean();
+  if (!polls) throw ApiError.notFound("Polls not found");
   return polls;
 }
 
@@ -37,7 +36,7 @@ const getMyVotedPolls = async (userId) => {
     .populate("poll")
     .lean();
 
-  if(!votes) ApiError.notfound("No voted polls found");
+  if (!votes) throw ApiError.notFound("No voted polls found");
 
   const votedPolls = votes
     .filter(vote => vote.poll !== null)
@@ -55,7 +54,7 @@ const createPoll = async ({ title, description, author, questions, responseMode,
     expiresAt,
   });
 
-  if(questions && questions.length > 0) {
+  if (questions && questions.length > 0) {
     const questionsWithPollId = questions.map(question => ({
       ...question,
       poll: poll._id
@@ -64,7 +63,7 @@ const createPoll = async ({ title, description, author, questions, responseMode,
     await Question.insertMany(questionsWithPollId);
   }
 
-  return poll;
+  return getPollById(poll._id);
 }
 
 const publishPoll = async (pollId, userId) => {
@@ -101,14 +100,7 @@ const publishPoll = async (pollId, userId) => {
 }
 
 const submitPoll = async ({ pollId, selected, userId }) => {
-
   try {
-    console.log("[poll] submitting vote", {
-      pollId,
-      voter: userId ? userId.toString() : "anonymous",
-      selections: Array.isArray(selected) ? selected.length : 0,
-    });
-
     if (!isValidObjectId(pollId)) {
       throw ApiError.badRequest("Invalid poll id");
     }
@@ -134,8 +126,6 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       throw ApiError.unauthorized("Sign in to vote on this poll");
     }
 
-    // If the requester is authenticated, associate the vote with their user id.
-    // This prevents logged-in users from voting multiple times even on anonymous polls.
     const voterId = userId ? userId : undefined;
 
     if (voterId) {
@@ -195,7 +185,7 @@ const submitPoll = async ({ pollId, selected, userId }) => {
     });
 
     const updatedPoll = await Poll.findByIdAndUpdate(
-      pollId, 
+      pollId,
       { $inc: { voteCount: 1 } },
       { returnDocument: "after" }
     );
@@ -203,13 +193,12 @@ const submitPoll = async ({ pollId, selected, userId }) => {
     const io = getIO();
 
     io.to(pollId).emit("poll-total-updated", {
-      pollId: pollId,
-      newTotalVotes: updatedPoll.voteCount
+      pollId,
+      newTotalVotes: updatedPoll.voteCount,
     });
-    // also notify analytics room
     io.to("analytics").emit("poll-total-updated", {
-      pollId: pollId,
-      newTotalVotes: updatedPoll.voteCount
+      pollId,
+      newTotalVotes: updatedPoll.voteCount,
     });
 
     for (const selection of selected) {
@@ -226,13 +215,13 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       io.to(pollId).emit("option-count-updated", {
         questionId: selection.question,
         optionId: selection.option,
-        newCount: updatedOption.selectedCount
+        newCount: updatedOption.selectedCount,
       });
       io.to("analytics").emit("option-count-updated", {
-        pollId: pollId,
+        pollId,
         questionId: selection.question,
         optionId: selection.option,
-        newCount: updatedOption.selectedCount
+        newCount: updatedOption.selectedCount,
       });
     }
 
@@ -256,7 +245,7 @@ const submitPoll = async ({ pollId, selected, userId }) => {
       throw err;
     }
 
-    throw ApiError.badRequest("Failed to submit vote"); 
+    throw ApiError.badRequest("Failed to submit vote");
   }
 }
 

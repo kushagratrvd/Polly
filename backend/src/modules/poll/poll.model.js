@@ -76,6 +76,8 @@ const questionSchema = new mongoose.Schema(
   }
 )
 
+questionSchema.index({ poll: 1 });
+
 const voteSchema = new mongoose.Schema(
   {
     poll: {
