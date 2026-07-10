@@ -1,6 +1,6 @@
 # Polly — Real-time Polling Platform
 
-This repository implements a full-stack polling platform. It includes a React + Vite frontend and a Node.js + Express backend with MongoDB, and uses Socket.IO for real-time updates.
+This repository implements a full-stack polling platform. It includes a React + Vite frontend and a Node.js + Express backend with Neon Postgres, and uses Socket.IO for real-time updates.
 
 Project goal
  - Build a full-stack platform where users can create polls, share them via public links, collect single-choice responses, and view analytics. Polls support anonymous or authenticated responses, mandatory/optional questions, expiry times, and publishing final results.
@@ -17,7 +17,7 @@ Features:
 - Real-time updates: Socket.IO events broadcast `poll-total-updated`, `option-count-updated`, and `poll-published` for live UI updates.
 
 Tech stack
-- Backend: Node.js (ESM), Express, Mongoose (MongoDB), Socket.IO
+- Backend: Node.js (ESM), Express, Postgres (Neon), Socket.IO
 - Frontend: Vite, React, Tailwind CSS, shadcn-style UI primitives
 
 Local development
