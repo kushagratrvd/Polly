@@ -1,11 +1,11 @@
-# Polly — Real-time Polling Platform (Hackathon Submission)
+# Polly — Real-time Polling Platform
 
-This repository implements a full-stack polling platform built for the hackathon prompt. It includes a React + Vite frontend and a Node.js + Express backend with MongoDB, and uses Socket.IO for real-time updates.
+This repository implements a full-stack polling platform. It includes a React + Vite frontend and a Node.js + Express backend with MongoDB, and uses Socket.IO for real-time updates.
 
 Project goal
  - Build a full-stack platform where users can create polls, share them via public links, collect single-choice responses, and view analytics. Polls support anonymous or authenticated responses, mandatory/optional questions, expiry times, and publishing final results.
 
-How this app meets the hackathon requirements
+Features:
 - Create & manage polls: authenticated users can create polls with multiple questions and options.
 - Single-option questions: each question allows one selected option only (enforced in frontend and backend).
 - Mandatory/optional questions: questions can be marked required or optional; validation runs on frontend and backend.
